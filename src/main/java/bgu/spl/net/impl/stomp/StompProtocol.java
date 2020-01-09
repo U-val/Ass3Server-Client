@@ -44,15 +44,20 @@ public class StompProtocol implements StompMessagingProtocol {
 
     private void unsubscribeProcess() {
         // headers check
-        if(!checkHeaders(new String[]{"id"})) return;
+        if(!checkHeaders(new String[]{"id"},true)) return;
 
         int ID = Integer.parseInt(headers[0].substring(3));
         //TODO - unsubscribe logic for (connection ID, subscription ID)
+        connections.getDataBase().unsubscribe(ID);
+
+
     }
+
+
 
     private void subscribeProcess() {
         //headers check
-        if(!checkHeaders(new String[]{"destination","id"})) return;
+        if(!checkHeaders(new String[]{"destination","id"},true)) return;
 
         String destination = headers[0].substring(12);
         int ID = Integer.parseInt(headers[1].substring(3));
@@ -62,22 +67,23 @@ public class StompProtocol implements StompMessagingProtocol {
     private void connectProcess() {
 
         //headers check
-        if(!checkHeaders(new String[]{"accept-version","host","login","passcode"})) return;
+        if(!checkHeaders(new String[]{"accept-version","host","login","passcode"},true)) return;
 
         String accept_version = headers[0].substring(15);
         String host = headers[1].substring(5);
         String login = headers[2].substring(6);
-        String passWard = headers[3].substring(9);
+        String passWord = headers[3].substring(9);
         if(!accept_version.equals(currVersion)) {ErrorProcess("Invalid version! excepted: '"+currVersion+"'; provided: '"+accept_version+"';"); return;}
-        if(connections.ifValidDetails(connectionID, login, passWard))   //TODO in connections-Boolean ifValidDetails
+        String DataBaseRespond = connections.getDataBase().logIn(connectionID, login, passWord);
+        if(DataBaseRespond.equals(""))
             connections.send(connectionID,"CONNECTED\nversion:"+currVersion+"\n\n^@");
         else
-            ErrorProcess("Invalid username/passcode");
+            ErrorProcess(DataBaseRespond);
     }
 
     private void disconnectProcess() {
         // headers check
-        if(!checkHeaders(new String[]{"receipt"})) return;
+        if(!checkHeaders(new String[]{"receipt"},true)) return;
 
         connections.send(connectionID, "RECEIPT\nreceipt-id:"+headers[0].substring(8)+"\n\n^@");
         connections.disconnect(connectionID);
@@ -85,7 +91,7 @@ public class StompProtocol implements StompMessagingProtocol {
 
 
     private void sendProcess() {
-        if(!checkHeaders(new String[]{"destination"})) return;
+        if(!checkHeaders(new String[]{"destination"},true)) return;
 
         String destination = headers[0].substring(12);
         //TODO - process text content - currMsg[1]
@@ -101,6 +107,10 @@ public class StompProtocol implements StompMessagingProtocol {
                 printLineByLine(headers) + "\n" + printLineByLine(body) +
                 "\n-----\n" + outputString +"\n^@");
     }
+    private void ReceiptProcess() {
+        String recId= fetchHeader("receipt")
+        connections.send(connectionID, "RECEIPT\nreceipt:"+recId+"\n\n^@");
+    }
 
     public boolean shouldTerminate(){
         return terminate.get();
@@ -108,15 +118,22 @@ public class StompProtocol implements StompMessagingProtocol {
 
     //************************************************helpers**********************************************************
     // check and send an error if necessarily
-    private boolean checkHeaders(String[] bindings){
+    private boolean checkHeaders(String[] bindings, boolean withError){
         boolean ans = bindings.length <= headers.length;
-        if(!ans)  ErrorProcess("missing headers in the frame");
+        if(withError && !ans)  ErrorProcess("missing headers in the frame");
         for(int i=0;ans && i<bindings.length; i++){
             int l = bindings[i].length();
             ans = headers[i].length()>=l && headers[i].substring(0,l).equals(bindings[i]+":");
-            if(!ans) ErrorProcess("the header: "+bindings[i]+" was excepted; instead provided: "+headers[i] );
+            if(withError && !ans) ErrorProcess("the header: "+bindings[i]+" was excepted; instead provided: "+headers[i] );
         }
         return ans;
+    }
+    private String fetchHeader(String s){
+        int l= s.length()+1;
+        for(String str: headers)
+            if(str.length()>=l && str.substring(0,l).equals(s+":"))
+                return str.substring(l);
+        return "";
     }
 
     private String printLineByLine(String[] array){

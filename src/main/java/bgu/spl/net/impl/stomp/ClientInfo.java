@@ -7,19 +7,19 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ClientInfo {
     private String name;
-    private String passWard;
-    private int ID;
+    private String passWord;
+    //private int ID;
     private boolean connected;
-    private List<String> Topics;
-    private Map<String,List<String>> Inventory;
+  //  private List<String> Topics;
+  //  private Map<String,List<String>> Inventory;
 
-    public ClientInfo(String name, String PW, int id){
+    public ClientInfo(String name, String PW){
         this.name=name;
-        this.passWard=PW;
-        this.ID= id;
+        this.passWord=PW;
+      //  this.ID= id;
         this.connected = false;
-        this.Topics = new LinkedList<>();
-        this.Inventory = new ConcurrentHashMap<>();
+      //  this.Topics = new LinkedList<>();
+       // this.Inventory = new ConcurrentHashMap<>();
     }
 
     public boolean getConnected() {
@@ -32,37 +32,37 @@ public class ClientInfo {
         this.connected = false;
     }
 
-    public int getID() {
-        return ID;
-    }
+//    public int getID() {
+//        return ID;
+//    }
     public String getName() {
         return name;
     }
-    public String getPassWard() {
-        return passWard;
+    public String getPassWord() {
+        return passWord;
     }
 
-    public List<String> getBooks(String genre) {
-        return Inventory.get(genre);
-    }
+//    public List<String> getBooks(String genre) {
+//        return Inventory.get(genre);
+//    }
 
-    public List<String> getTopics() {
-        return Topics;
-    }
+//    public List<String> getTopics() {
+//        return Topics;
+//    }
 
-    public boolean addBook(String genre, String book){
-        if(Inventory.get(genre).contains(book)) return false;
-        Inventory.get(genre).add(book);
-        return true;
-    }
+//    public boolean addBook(String genre, String book){
+//        if(Inventory.get(genre).contains(book)) return false;
+//        Inventory.get(genre).add(book);
+//        return true;
+//    }
 
-    public boolean addTopic(String topic){
-        if(Topics.contains(topic)) return false;
-        Topics.add(topic);
-        return true;
-    }
-
-    public boolean takeBook(String genre, String book) {
-        return Inventory.get(genre).remove(book);
-    }
+//    public boolean addTopic(String topic){
+//        if(Topics.contains(topic)) return false;
+//        Topics.add(topic);
+//        return true;
+//    }
+//
+//    public boolean takeBook(String genre, String book) {
+//        return Inventory.get(genre).remove(book);
+//    }
 }

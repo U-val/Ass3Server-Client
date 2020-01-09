@@ -10,11 +10,14 @@ public class DataBase {
 
     private Map<String,ClientInfo> users = new ConcurrentHashMap<>();
     private Map<String, ReentrantReadWriteLock> locks = new ConcurrentHashMap<>();
+    private Map<String, List<String>> GenreToUsers = new ConcurrentHashMap<>();
+    private Map<String,Integer> activeUsersToCHID = new ConcurrentHashMap<>();
 
     public Boolean addUser(String name, String PW, int ID){
         if(users.get(name)!=null) return false;
-        users.put(name, new ClientInfo(name, PW, ID));
+        users.put(name, new ClientInfo(name, PW));
         locks.put(name, new ReentrantReadWriteLock());
+        activeUsersToCHID.put(name,ID);
         return true;
     }
 
@@ -35,7 +38,9 @@ public class DataBase {
             first.writeLock().unlock();
         }
     }
+    public void subscribe(String name, String genre){
 
+    }
     public void addBook (String name,String genre, String book){
         locks.get(name).writeLock().lock();
         try{
@@ -46,7 +51,7 @@ public class DataBase {
     }
 
     public List<String> showBooks(String genre, String name){
-        List<String> res = null;
+        List<String> res;
         locks.get(name).readLock().lock();
         try{
             res = users.get(name).getBooks(genre);
@@ -56,14 +61,21 @@ public class DataBase {
         if(res==null) return new LinkedList<>();
         return res;
     }
-
-    public void logIn(String name) {
+    // returns if the details are valid, and if are- log in to D-B
+    public String logIn(int CHID, String name, String passCode) {
+        String ans="";
+        if(users.get(name)==null) addUser(name,passCode,CHID);
         locks.get(name).writeLock().lock();
         try {
-            users.get(name).connect();
+            if(activeUsersToCHID.get(name)!=null) ans="already logged in";
+            else if(users.get(name).getPassWord().equals(passCode)){
+                users.get(name).connect();
+                activeUsersToCHID.put(name,CHID);
+            } else ans= "wrong password";
         }finally {
             locks.get(name).writeLock().unlock();
         }
+        return ans;
     }
 
     public void logOut(String name){
@@ -74,6 +86,7 @@ public class DataBase {
             locks.get(name).writeLock().unlock();
         }
     }
+
 
     // TODO subscribe / join
     // TODO unsubscribe
