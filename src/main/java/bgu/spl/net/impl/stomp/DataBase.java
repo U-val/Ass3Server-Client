@@ -10,56 +10,28 @@ public class DataBase {
 
     private Map<String,ClientInfo> users = new ConcurrentHashMap<>();
     private Map<String, ReentrantReadWriteLock> locks = new ConcurrentHashMap<>();
-    private Map<String, List<String>> GenreToUsers = new ConcurrentHashMap<>();
-    private Map<String,Integer> activeUsersToCHID = new ConcurrentHashMap<>();
+    private Map<String, Map<String,Integer>> GenreToUsers = new ConcurrentHashMap<>();
+    private Map<Integer,String> activeUsersToCHID = new ConcurrentHashMap<>();
 
     public Boolean addUser(String name, String PW, int ID){
         if(users.get(name)!=null) return false;
         users.put(name, new ClientInfo(name, PW));
         locks.put(name, new ReentrantReadWriteLock());
-        activeUsersToCHID.put(name,ID);
+        activeUsersToCHID.put(ID,name);
         return true;
     }
 
-    public void TransferBook(String from, String to,String genre, String book){
-        ReentrantReadWriteLock first, second;
-        if(from.compareTo(to)>0) {first = locks.get(from); second = locks.get(to);}
-        else {first = locks.get(to); second =  locks.get(from);}
-        first.writeLock().lock();
-        try{
-            second.writeLock().lock();
-            try {
-                if(users.get(from).takeBook(genre,book))
-                    users.get(to).addBook(genre,book);
-            }finally {
-                second.writeLock().unlock();
-            }
-        }finally {
-            first.writeLock().unlock();
-        }
-    }
-    public void subscribe(String name, String genre){
-
-    }
-    public void addBook (String name,String genre, String book){
-        locks.get(name).writeLock().lock();
-        try{
-            users.get(name).addBook(genre,book);
-        }finally {
-            locks.get(name).writeLock().unlock();
-        }
-    }
-
-    public List<String> showBooks(String genre, String name){
-        List<String> res;
+    public boolean isLoggedIn(int CHID) {
+        String name = getName(CHID);
+        if(name==null) return false;
+        boolean ans;
         locks.get(name).readLock().lock();
         try{
-            res = users.get(name).getBooks(genre);
+            ans = users.get(name).getConnected();
         }finally {
             locks.get(name).readLock().unlock();
         }
-        if(res==null) return new LinkedList<>();
-        return res;
+        return ans;
     }
     // returns if the details are valid, and if are- log in to D-B
     public String logIn(int CHID, String name, String passCode) {
@@ -67,10 +39,10 @@ public class DataBase {
         if(users.get(name)==null) addUser(name,passCode,CHID);
         locks.get(name).writeLock().lock();
         try {
-            if(activeUsersToCHID.get(name)!=null) ans="already logged in";
+            if(activeUsersToCHID.get(CHID)!=null) ans="already logged in";
             else if(users.get(name).getPassWord().equals(passCode)){
                 users.get(name).connect();
-                activeUsersToCHID.put(name,CHID);
+                activeUsersToCHID.put(CHID,name);
             } else ans= "wrong password";
         }finally {
             locks.get(name).writeLock().unlock();
@@ -85,6 +57,85 @@ public class DataBase {
         } finally {
             locks.get(name).writeLock().unlock();
         }
+    }
+    public void removeClient(int connectionId){
+        String name = getName(connectionId);
+        logOut(name); // logout
+        ReentrantReadWriteLock lock = locks.get(name); //acquire user's lock
+        lock.writeLock().lock();
+        try{
+            this.activeUsersToCHID.remove(connectionId); // delete user's connectionId
+
+            for (String gen:GenreToUsers.keySet()){
+                this.GenreToUsers.get(gen).remove(name); // remove user from all his genres
+            }
+        }
+        finally {
+            lock.writeLock().unlock();
+        }
+        synchronized (this.locks){
+            this.locks.remove(name); // remove user's lock
+        }
+    }
+    public Map<Integer,String> getIdMap(){
+        return this.activeUsersToCHID;
+    }
+
+    public String getName(int id){
+        return this.activeUsersToCHID.get(id);
+    }
+
+    public int getID(String name){
+        for (int id:activeUsersToCHID.keySet()) {
+            locks.get(name).readLock().lock();
+            try {
+                if (activeUsersToCHID.get(id).equals(name))
+                    return id;
+            }
+            finally {
+                locks.get(name).readLock().lock();
+            }
+        }
+        return -1; // if not found
+    }
+
+    public Map<String,Integer> getGenreList(String genre){
+        return this.GenreToUsers.get(genre);
+    }
+
+    public ReentrantReadWriteLock getLock(String name){
+        return this.locks.get(name);
+    }
+    public void subscribe (int CHID, String genre, int id){
+        this.GenreToUsers.computeIfAbsent(genre, k -> new ConcurrentHashMap<>()); // create new genre id needed
+        this.GenreToUsers.get(genre).put(getName(CHID),id); // add user to this genre
+    }
+    public void unsubscribe (int CHID, int id) {
+        String name = getName(CHID);
+        if(name == null) return;
+        locks.get(name).writeLock().lock();
+        try{
+            this.GenreToUsers.forEach((gen,map)->{
+                if(map.get(id)!=null && map.get(id).equals(name))
+                    map.remove(id);
+            });
+        }finally {
+            locks.get(name).writeLock().unlock();
+        }
+
+    }
+
+    public int getSubId(String des, int connectionID) {
+        String name = getName(connectionID);
+        if(name==null) return -1;
+        int ans;
+        locks.get(name).readLock().lock();
+        try{
+            ans=GenreToUsers.get(des).get(name);
+        }finally {
+            locks.get(name).readLock().unlock();
+        }
+        return ans;
     }
 
 

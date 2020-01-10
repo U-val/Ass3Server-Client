@@ -1,22 +1,26 @@
 package bgu.spl.net.impl.stomp;
 import bgu.spl.net.api.StompMessagingProtocol;
 import bgu.spl.net.srv.Connections;
+import bgu.spl.net.srv.ConnectionsImpl;
+
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class StompProtocol implements StompMessagingProtocol {
     private AtomicBoolean terminate = new AtomicBoolean(false);
     private int connectionID;
-    private Connections<String> connections;
+    private ConnectionsImpl<String> connections;
     // for local use
     private int currSize; // the message size
     private String currVersion = "1.2";
     private String[] headers;
-    private String[] body;
+    private String body;
+    private int msgCount;
 
     public void start(int connectionId, Connections<String> connections){
         this.connectionID= connectionId;
-        this.connections = connections;
+        this.connections = (ConnectionsImpl<String>) connections;
+        msgCount=0;
     }
     //Main Process
     public void process(String msg) {
@@ -25,7 +29,9 @@ public class StompProtocol implements StompMessagingProtocol {
         String[] temp = splited[1].split("\n\n",2);
         if(temp.length!=2) {ErrorProcess("Invalid msg");return;}
         headers=temp[0].split("\n");
-        body = temp[1].split("\n");
+        body = temp[1].split("^@",1)[0];
+        if(!connections.getDataBase().isLoggedIn(connectionID) && !splited[0].equals("CONNECT")) ErrorProcess("need to log In before any action");
+        else
         switch(splited[0]) {
             case "CONNECT": connectProcess(); break;
             case "SEND": sendProcess(); break;
@@ -47,8 +53,9 @@ public class StompProtocol implements StompMessagingProtocol {
         if(!checkHeaders(new String[]{"id"},true)) return;
 
         int ID = Integer.parseInt(headers[0].substring(3));
-        //TODO - unsubscribe logic for (connection ID, subscription ID)
-        connections.getDataBase().unsubscribe(ID);
+
+        connections.getDataBase().unsubscribe(connectionID, ID);
+        ReceiptProcess();
 
 
     }
@@ -61,7 +68,9 @@ public class StompProtocol implements StompMessagingProtocol {
 
         String destination = headers[0].substring(12);
         int ID = Integer.parseInt(headers[1].substring(3));
-        // TODO - subscribe in DataBase with Connections
+
+        connections.getDataBase().subscribe(connectionID,destination,ID);
+
     }
 
     private void connectProcess() {
@@ -92,23 +101,33 @@ public class StompProtocol implements StompMessagingProtocol {
 
     private void sendProcess() {
         if(!checkHeaders(new String[]{"destination"},true)) return;
+        if(body==null || body.equals("")) {ErrorProcess("missing body"); return;}
 
         String destination = headers[0].substring(12);
-        //TODO - process text content - currMsg[1]
+
         //connections- do something correspond to the content
+        MessageProcess(destination);
     }
+
+    private void MessageProcess(String des) {
+        msgCount++;
+        int sub_id = connections.getDataBase().getSubId(des,connectionID);
+        connections.send(des, "MESSAGE\nsubscription-id:"+sub_id+
+                "\nmessage-id:"+msgCount+ "\ndestination:"+des+"\n"+body+"\n^@");
+    }
+
     private void ErrorProcess(String outputString) {
 
         connections.send(connectionID,"ERROR" +
                 "\nreceipt-id:"+extractReceiptID()+
-                "\ncontent-type:"+ (body[0].equals("^@") ? "plain": "text")+
+                "\ncontent-type:"+ (body.equals("^@") ? "plain": "text")+
                 "\ncontent-length:"+currSize+
                 "\nthe message: \n ----- \n"+
-                printLineByLine(headers) + "\n" + printLineByLine(body) +
+                printLineByLine(headers) + "\n" + body +
                 "\n-----\n" + outputString +"\n^@");
     }
     private void ReceiptProcess() {
-        String recId= fetchHeader("receipt")
+        String recId= fetchHeader("receipt");
         connections.send(connectionID, "RECEIPT\nreceipt:"+recId+"\n\n^@");
     }
 
