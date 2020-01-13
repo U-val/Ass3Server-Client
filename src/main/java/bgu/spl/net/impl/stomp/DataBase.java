@@ -17,7 +17,7 @@ public class DataBase {
         if(users.get(name)!=null) return false;
         users.put(name, new ClientInfo(name, PW));
         locks.put(name, new ReentrantReadWriteLock());
-        activeUsersToCHID.put(ID,name);
+
         return true;
     }
 

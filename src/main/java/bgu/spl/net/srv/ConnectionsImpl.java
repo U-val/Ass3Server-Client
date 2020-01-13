@@ -6,22 +6,27 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ConnectionsImpl<T> implements Connections<T> {
 
-    private Map<Integer, ConnectionHandler<T>> connectionMap = new HashMap<>() ;
+    private Map<Integer, ConnectionHandler<T>> connectionMap = new ConcurrentHashMap<>() ;
     private DataBase dataBase = new DataBase();
     private ReentrantReadWriteLock connectionLock = new ReentrantReadWriteLock();
 
-    private static class holder {
-        private static ConnectionsImpl instance = new ConnectionsImpl();
+    private static class holder<String> {
+        private static ConnectionsImpl instance = new ConnectionsImpl<>();
     }
     /**
      * Retrieves the single instance of this class.
      */
     public static ConnectionsImpl getInstance() {
         return holder.instance;
+    }
+    //for server ONLYYY
+    public boolean addHandler(int CHID, ConnectionHandler<T> handler) {
+        return connectionMap.putIfAbsent(CHID,handler)!=null ;
     }
 
     public boolean send(int connectionId, T msg) {

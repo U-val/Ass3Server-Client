@@ -1,4 +1,5 @@
 package bgu.spl.net.impl.stomp;
+import bgu.spl.net.api.MessagingProtocol;
 import bgu.spl.net.api.StompMessagingProtocol;
 import bgu.spl.net.srv.Connections;
 import bgu.spl.net.srv.ConnectionsImpl;
@@ -25,12 +26,14 @@ public class StompProtocol implements StompMessagingProtocol {
     //Main Process
     public void process(String msg) {
         currSize = msg.length();
+        System.out.println("message at the protocol "+msg);
         String[] splited = msg.split("\n", 2);
         String[] temp = splited[1].split("\n\n",2);
         if(temp.length!=2) {ErrorProcess("Invalid msg");return;}
         headers=temp[0].split("\n");
-        body = temp[1].split("^@",1)[0];
-        if(!connections.getDataBase().isLoggedIn(connectionID) && !splited[0].equals("CONNECT")) ErrorProcess("need to log In before any action");
+        body = temp[1]; //.split("^",1)[0];
+        boolean shouldConnect = connections.getDataBase().getName(connectionID)==null || !connections.getDataBase().isLoggedIn(connectionID);
+        if(shouldConnect && !splited[0].equals("CONNECT")) ErrorProcess("need to log In before any action");
         else
         switch(splited[0]) {
             case "CONNECT": connectProcess(); break;
@@ -43,7 +46,7 @@ public class StompProtocol implements StompMessagingProtocol {
 //            case "COMMIT": commitProcess(); break;
 //            case "ABORT": abortProcess(); break;
             case "DISCONNECT": disconnectProcess(); break;
-            default: ErrorProcess("unknown title");
+            default: ErrorProcess("unknown title - "+splited[0]);
         }
     }
 //********subProcess****************************
@@ -70,7 +73,7 @@ public class StompProtocol implements StompMessagingProtocol {
         int ID = Integer.parseInt(headers[1].substring(3));
 
         connections.getDataBase().subscribe(connectionID,destination,ID);
-
+        ReceiptProcess();
     }
 
     private void connectProcess() {
@@ -85,7 +88,7 @@ public class StompProtocol implements StompMessagingProtocol {
         if(!accept_version.equals(currVersion)) {ErrorProcess("Invalid version! excepted: '"+currVersion+"'; provided: '"+accept_version+"';"); return;}
         String DataBaseRespond = connections.getDataBase().logIn(connectionID, login, passWord);
         if(DataBaseRespond.equals(""))
-            connections.send(connectionID,"CONNECTED\nversion:"+currVersion+"\n\n^@");
+            connections.send(connectionID,"CONNECTED\nversion:"+currVersion+"\n\n\u0000");
         else
             ErrorProcess(DataBaseRespond);
     }
@@ -94,8 +97,10 @@ public class StompProtocol implements StompMessagingProtocol {
         // headers check
         if(!checkHeaders(new String[]{"receipt"},true)) return;
 
-        connections.send(connectionID, "RECEIPT\nreceipt-id:"+headers[0].substring(8)+"\n\n^@");
+        connections.send(connectionID, "RECEIPT\nreceipt-id:"+headers[0].substring(8)+"\n\n\u0000");
+        this.terminate.set(true);   //should terminate
         connections.disconnect(connectionID);
+
     }
 
 
@@ -113,7 +118,7 @@ public class StompProtocol implements StompMessagingProtocol {
         msgCount++;
         int sub_id = connections.getDataBase().getSubId(des,connectionID);
         connections.send(des, "MESSAGE\nsubscription-id:"+sub_id+
-                "\nmessage-id:"+msgCount+ "\ndestination:"+des+"\n"+body+"\n^@");
+                "\nmessage-id:"+msgCount+ "\ndestination:"+des+"\n"+body+"\n\u0000");
     }
 
     private void ErrorProcess(String outputString) {
@@ -124,11 +129,11 @@ public class StompProtocol implements StompMessagingProtocol {
                 "\ncontent-length:"+currSize+
                 "\nthe message: \n ----- \n"+
                 printLineByLine(headers) + "\n" + body +
-                "\n-----\n" + outputString +"\n^@");
+                "\n-----\n" + outputString +"\n\u0000");
     }
     private void ReceiptProcess() {
         String recId= fetchHeader("receipt");
-        connections.send(connectionID, "RECEIPT\nreceipt:"+recId+"\n\n^@");
+        connections.send(connectionID, "RECEIPT\nreceipt-id:"+recId+"\n\n\u0000");
     }
 
     public boolean shouldTerminate(){
@@ -141,9 +146,9 @@ public class StompProtocol implements StompMessagingProtocol {
         boolean ans = bindings.length <= headers.length;
         if(withError && !ans)  ErrorProcess("missing headers in the frame");
         for(int i=0;ans && i<bindings.length; i++){
-            int l = bindings[i].length();
+            int l = bindings[i].length()+1;
             ans = headers[i].length()>=l && headers[i].substring(0,l).equals(bindings[i]+":");
-            if(withError && !ans) ErrorProcess("the header: "+bindings[i]+" was excepted; instead provided: "+headers[i] );
+            if(withError && !ans) ErrorProcess("the header: "+bindings[i]+" was excepted; instead provided: "+headers[i].substring(0,l) );
         }
         return ans;
     }

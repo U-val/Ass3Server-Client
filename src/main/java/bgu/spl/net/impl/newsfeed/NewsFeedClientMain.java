@@ -2,10 +2,13 @@ package bgu.spl.net.impl.newsfeed;
 
 import bgu.spl.net.impl.rci.RCIClient;
 
+import java.net.InetAddress;
+
 public class NewsFeedClientMain {
 
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
+
             args = new String[]{"127.0.0.1"};
         }
 

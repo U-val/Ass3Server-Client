@@ -9,17 +9,21 @@ import java.util.Arrays;
 public class EncDecImp implements MessageEncoderDecoder<String> {
     private byte[] bytes = new byte[1 << 10]; //start with 1k
     private int len = 0;
+    boolean started=false;
+
 
     @Override
     public String decodeNextByte(byte nextByte) {
         //notice that the top 128 ascii characters have the same representation as their utf-8 counterparts
         //this allow us to do the following comparison
-        if (nextByte == '\n') {
+        if (nextByte == '\u0000') {
+            started = false;
             return popString();
         }
-
-        pushByte(nextByte);
-        return null; //not a line yet
+        started= started || nextByte!=10;
+        if(started)
+            pushByte(nextByte);
+        return null; //not a msg yet
     }
 
 
