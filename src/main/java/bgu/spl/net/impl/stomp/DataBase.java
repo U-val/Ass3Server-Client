@@ -38,8 +38,10 @@ public class DataBase {
         String ans="";
         if(users.get(name)==null) addUser(name,passCode,CHID);
         locks.get(name).writeLock().lock();
+
         try {
-            if(activeUsersToCHID.get(CHID)!=null) ans="already logged in";
+            if(activeUsersToCHID.get(CHID)!=null) {
+                if(activeUsersToCHID.get(CHID).equals(name)) ans="already logged in"; else ans="wrong user name";}
             else if(users.get(name).getPassWord().equals(passCode)){
                 users.get(name).connect();
                 activeUsersToCHID.put(CHID,name);
@@ -61,7 +63,9 @@ public class DataBase {
     public void removeClient(int connectionId){
         String name = getName(connectionId);
         logOut(name); // logout
+
         ReentrantReadWriteLock lock = locks.get(name); //acquire user's lock
+
         lock.writeLock().lock();
         try{
             this.activeUsersToCHID.remove(connectionId); // delete user's connectionId
@@ -73,9 +77,9 @@ public class DataBase {
         finally {
             lock.writeLock().unlock();
         }
-        synchronized (this.locks){
-            this.locks.remove(name); // remove user's lock
-        }
+//        synchronized (this.locks){
+//            this.locks.remove(name); // remove user's lock
+//        }
     }
     public Map<Integer,String> getIdMap(){
         return this.activeUsersToCHID;
@@ -93,7 +97,7 @@ public class DataBase {
                     return id;
             }
             finally {
-                locks.get(name).readLock().lock();
+                locks.get(name).readLock().unlock();
             }
         }
         return -1; // if not found

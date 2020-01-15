@@ -27,12 +27,14 @@ public interface Server<String> extends Closeable {
             Supplier<StompMessagingProtocol > protocolFactory,
             Supplier<MessageEncoderDecoder<String> > encoderDecoderFactory) {
 
-        return new BaseServer<String>(port, protocolFactory, encoderDecoderFactory) {
-            @Override
-            protected void execute(BlockingConnectionHandler<String>  handler) {
-                new Thread(handler).start();
-            }
-        };
+//        return new BaseServer<String>(port, protocolFactory, encoderDecoderFactory) {
+//            @Override
+//            protected void execute(BlockingConnectionHandler<String>  handler) {
+//                new Thread(handler).start();
+//            }
+//        };
+        return new TPCServer<>(port,protocolFactory,encoderDecoderFactory);
+
 
     }
 

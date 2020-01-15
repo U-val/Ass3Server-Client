@@ -46,17 +46,20 @@ public class ConnectionsImpl<T> implements Connections<T> {
     public void send(String channel, T msg) {
         Collection<String> genreClients= this.dataBase.getGenreList(channel).keySet();
         for (String name: genreClients){
-            this.dataBase.getLock(name).writeLock().lock();
-            try {
-                this.connectionMap.get(this.dataBase.getID(name)).send(msg);
-            }
-            finally {
-                this.dataBase.getLock(name).writeLock().unlock();
-            }
+            int id = this.dataBase.getID(name);
+//            this.dataBase.getLock(name).writeLock().lock();
+//            try {
+                //this.connectionMap.get(id).send(msg);
+                send(id,msg);
+//            }
+//            finally {
+//                this.dataBase.getLock(name).writeLock().unlock();
+//            }
         }
     }
 
     public void disconnect(int connectionId) {
+
         this.dataBase.removeClient(connectionId); // remove client from database (not entirely)
 
         this.connectionMap.remove(connectionId);

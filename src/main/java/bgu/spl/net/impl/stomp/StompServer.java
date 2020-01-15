@@ -7,12 +7,18 @@ import bgu.spl.net.srv.Server;
 public class StompServer {
 
     public static void main(String[] args) {
-        Server.reactor(
+        new Thread(() -> Server.reactor(
                 Runtime.getRuntime().availableProcessors(),
                 7777, //port
                 StompProtocol::new, //protocol factory
                 EncDecImp::new //message encoder decoder factory
-        ).serve();
+        ).serve()).start();
+        new Thread(() ->  Server.threadPerClient(
+                7778, //port
+                StompProtocol::new, //protocol factory
+                EncDecImp::new //message encoder decoder factory
+        ).serve()).start();
+
     }
 
 

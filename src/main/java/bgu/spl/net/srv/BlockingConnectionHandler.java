@@ -8,6 +8,9 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler<T> {
 
@@ -17,11 +20,14 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private volatile boolean connected = true;
+    private ConcurrentLinkedQueue<String> writeQ;
+
 
     public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<String> reader, StompMessagingProtocol protocol) {
         this.sock = sock;
         this.encdec = reader;
         this.protocol = protocol;
+        this.writeQ = new ConcurrentLinkedQueue<>();
     }
 
     @Override
@@ -32,14 +38,17 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
             in = new BufferedInputStream(sock.getInputStream());
             out = new BufferedOutputStream(sock.getOutputStream());
 
-            while (!protocol.shouldTerminate() && connected && (read = in.read()) >= 0) {
-                String nextMessage = encdec.decodeNextByte((byte) read);
-                if (nextMessage != null) {
-                    protocol.process(nextMessage);
-//                    if (response != null) {
-//                        out.write(encdec.encode(response));
-//                        out.flush();
-//                    }
+            read = in.read();
+            while (!protocol.shouldTerminate() && connected && (read >= 0) || !writeQ.isEmpty()) {
+                if(read >= 0){
+                    String nextMessage = encdec.decodeNextByte((byte) read);
+                    if (nextMessage != null)
+                        protocol.process(nextMessage);
+                    read= in.read();
+                }
+                if(!writeQ.isEmpty()){
+                    out.write(encdec.encode(writeQ.poll()));
+                    out.flush();
                 }
             }
 
@@ -57,6 +66,11 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
 
     @Override
     public void send(T msg) {
-        //IMPLEMENT IF NEEDED
+        writeQ.add((String) msg);
+
+    }
+
+    public void startProtocol(int chid, ConnectionsImpl connections) {
+        this.protocol.start(chid,connections);
     }
 }

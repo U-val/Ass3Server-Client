@@ -6,6 +6,7 @@
 package bgu.spl.net.srv;
 
 import java.io.Closeable;
+import java.io.IOException;
 
 /**
  * The ConnectionHandler interface for Message of type T
@@ -19,4 +20,6 @@ public interface ConnectionHandler<T> extends Closeable {
 
     void send(T msg);
 
+    @Override
+    void close() throws IOException;
 }

@@ -16,6 +16,7 @@ public class StompProtocol implements StompMessagingProtocol {
     private String currVersion = "1.2";
     private String[] headers;
     private String body;
+    private String msgType;
     private int msgCount;
 
     public void start(int connectionId, Connections<String> connections){
@@ -26,16 +27,18 @@ public class StompProtocol implements StompMessagingProtocol {
     //Main Process
     public void process(String msg) {
         currSize = msg.length();
-        System.out.println("message at the protocol "+msg);
+        System.out.println("message at the protocol "+msg); //toRemove
         String[] splited = msg.split("\n", 2);
         String[] temp = splited[1].split("\n\n",2);
         if(temp.length!=2) {ErrorProcess("Invalid msg");return;}
         headers=temp[0].split("\n");
         body = temp[1]; //.split("^",1)[0];
+        msgType=splited[0];
+
         boolean shouldConnect = connections.getDataBase().getName(connectionID)==null || !connections.getDataBase().isLoggedIn(connectionID);
         if(shouldConnect && !splited[0].equals("CONNECT")) ErrorProcess("need to log In before any action");
         else
-        switch(splited[0]) {
+        switch(msgType) {
             case "CONNECT": connectProcess(); break;
             case "SEND": sendProcess(); break;
             case "SUBSCRIBE": subscribeProcess(); break;
@@ -88,7 +91,7 @@ public class StompProtocol implements StompMessagingProtocol {
         if(!accept_version.equals(currVersion)) {ErrorProcess("Invalid version! excepted: '"+currVersion+"'; provided: '"+accept_version+"';"); return;}
         String DataBaseRespond = connections.getDataBase().logIn(connectionID, login, passWord);
         if(DataBaseRespond.equals(""))
-            connections.send(connectionID,"CONNECTED\nversion:"+currVersion+"\n\n\u0000");
+            connections.send(connectionID,"CONNECTED\nversion:"+currVersion+"\n");
         else
             ErrorProcess(DataBaseRespond);
     }
@@ -97,9 +100,11 @@ public class StompProtocol implements StompMessagingProtocol {
         // headers check
         if(!checkHeaders(new String[]{"receipt"},true)) return;
 
-        connections.send(connectionID, "RECEIPT\nreceipt-id:"+headers[0].substring(8)+"\n\n\u0000");
-        this.terminate.set(true);   //should terminate
+        connections.send(connectionID, "RECEIPT\nreceipt-id:"+headers[0].substring(8)+"\n");
+
         connections.disconnect(connectionID);
+
+        this.terminate.set(true);   //should terminate
 
     }
 
@@ -110,30 +115,29 @@ public class StompProtocol implements StompMessagingProtocol {
 
         String destination = headers[0].substring(12);
 
-        //connections- do something correspond to the content
         MessageProcess(destination);
     }
 
-    private void MessageProcess(String des) {
+    private void MessageProcess( String des) {
         msgCount++;
         int sub_id = connections.getDataBase().getSubId(des,connectionID);
         connections.send(des, "MESSAGE\nsubscription-id:"+sub_id+
-                "\nmessage-id:"+msgCount+ "\ndestination:"+des+"\n"+body+"\n\u0000");
+                "\nmessage-id:"+msgCount+ "\ndestination:"+des+"\n"+body+"\n");
     }
 
     private void ErrorProcess(String outputString) {
 
-        connections.send(connectionID,"ERROR" +
+        connections.send(connectionID,"ERROR!" +
                 "\nreceipt-id:"+extractReceiptID()+
-                "\ncontent-type:"+ (body.equals("^@") ? "plain": "text")+
+                "\ncontent-type:"+ (body.equals("\n") ? "plain": "text")+
                 "\ncontent-length:"+currSize+
-                "\nthe message: \n ----- \n"+
-                printLineByLine(headers) + "\n" + body +
-                "\n-----\n" + outputString +"\n\u0000");
+                "\nthe message: \n ----- \n"+ msgType+"\n"+
+                printLineByLine(headers) + (body.equals("")?"":"\n" + body) +
+                "\n-----\n" + outputString +"\n");
     }
     private void ReceiptProcess() {
         String recId= fetchHeader("receipt");
-        connections.send(connectionID, "RECEIPT\nreceipt-id:"+recId+"\n\n\u0000");
+        connections.send(connectionID, "RECEIPT\nreceipt-id:"+recId+"\n");
     }
 
     public boolean shouldTerminate(){
@@ -162,9 +166,10 @@ public class StompProtocol implements StompMessagingProtocol {
 
     private String printLineByLine(String[] array){
         StringBuilder res= new StringBuilder();
-        for(String s: array){
-            if(!s.equals("^@"))
-                res.append(s).append("\n");
+        res.append(array[0]);
+        for(int i=1; i<array.length; i++){
+            if(!array[i].equals("\n"))
+                res.append("\n").append(array[i]);
         }
         return res.toString();
     }

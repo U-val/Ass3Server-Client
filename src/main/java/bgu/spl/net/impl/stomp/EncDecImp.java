@@ -14,13 +14,12 @@ public class EncDecImp implements MessageEncoderDecoder<String> {
 
     @Override
     public String decodeNextByte(byte nextByte) {
-        //notice that the top 128 ascii characters have the same representation as their utf-8 counterparts
-        //this allow us to do the following comparison
+
         if (nextByte == '\u0000') {
             started = false;
             return popString();
         }
-        started= started || nextByte!=10;
+        started= started || nextByte!='\n';
         if(started)
             pushByte(nextByte);
         return null; //not a msg yet
@@ -29,7 +28,7 @@ public class EncDecImp implements MessageEncoderDecoder<String> {
 
     @Override
     public byte[] encode(String message) {
-        return (message + "\n").getBytes(); //uses utf8 by default
+        return (message + "\u0000\n").getBytes(); //uses utf8 by default
     }
 
     private void pushByte(byte nextByte) {
@@ -41,8 +40,7 @@ public class EncDecImp implements MessageEncoderDecoder<String> {
     }
 
     private String popString() {
-        //notice that we explicitly requesting that the string will be decoded from UTF-8
-        //this is not actually required as it is the default encoding in java.
+
         String result = new String(bytes, 0, len, StandardCharsets.UTF_8);
         len = 0;
         return result;
