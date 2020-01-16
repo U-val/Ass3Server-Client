@@ -1,5 +1,4 @@
 package bgu.spl.net.impl.stomp;
-import bgu.spl.net.api.MessagingProtocol;
 import bgu.spl.net.api.StompMessagingProtocol;
 import bgu.spl.net.srv.Connections;
 import bgu.spl.net.srv.ConnectionsImpl;
@@ -38,7 +37,6 @@ public class StompProtocol implements StompMessagingProtocol {
     public void process(String msg) {
         // msg setUp for the protocol fields
         currSize = msg.length();
-        System.out.println("message at the protocol "+msg); //toRemove
         String[] splited = msg.split("\n", 2);
         String[] temp = splited[1].split("\n\n",2);
         if(temp.length!=2) {ErrorProcess("Invalid msg");return;}
@@ -68,7 +66,7 @@ public class StompProtocol implements StompMessagingProtocol {
     //handle unsubscribe
     private void unsubscribeProcess() {
         // headers check
-        if(!checkHeaders(new String[]{"id"},true)) return;
+        if(checkHeaders(new String[]{"id"}, true)) return;
 
         int ID = Integer.parseInt(headers[0].substring(3));
 
@@ -79,7 +77,7 @@ public class StompProtocol implements StompMessagingProtocol {
     //handle subscribe
     private void subscribeProcess() {
         //headers check
-        if(!checkHeaders(new String[]{"destination","id"},true)) return;
+        if(checkHeaders(new String[]{"destination", "id"}, true)) return;
 
         String destination = headers[0].substring(12);
         int ID = Integer.parseInt(headers[1].substring(3));
@@ -91,7 +89,7 @@ public class StompProtocol implements StompMessagingProtocol {
     //handle connect
     private void connectProcess() {
         //headers check
-        if(!checkHeaders(new String[]{"accept-version","host","login","passcode"},true)) return;
+        if(checkHeaders(new String[]{"accept-version", "host", "login", "passcode"}, true)) return;
 
         String accept_version = headers[0].substring(15);
         String host = headers[1].substring(5);
@@ -108,7 +106,7 @@ public class StompProtocol implements StompMessagingProtocol {
     //handle disconnect
     private void disconnectProcess() {
         // headers check
-        if(!checkHeaders(new String[]{"receipt"},true)) return;
+        if(checkHeaders(new String[]{"receipt"}, true)) return;
 
         connections.send(connectionID, "RECEIPT\nreceipt-id:"+headers[0].substring(8)+"\n");
 
@@ -120,7 +118,7 @@ public class StompProtocol implements StompMessagingProtocol {
 
     //handle send
     private void sendProcess() {
-        if(!checkHeaders(new String[]{"destination"},true)) return;
+        if(checkHeaders(new String[]{"destination"}, true)) return;
         if(body==null || body.equals("")) {ErrorProcess("missing body"); return;}
 
         String destination = headers[0].substring(12);
@@ -167,7 +165,7 @@ public class StompProtocol implements StompMessagingProtocol {
             ans = headers[i].length()>=l && headers[i].substring(0,l).equals(bindings[i]+":");
             if(withError && !ans) ErrorProcess("the header: "+bindings[i]+" was excepted; instead provided: "+headers[i].substring(0,l) );
         }
-        return ans;
+        return !ans;
     }
     private String fetchHeader(String s){
         int l= s.length()+1;

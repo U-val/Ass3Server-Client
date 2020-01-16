@@ -17,10 +17,9 @@ public class DataBase {
      * add user to 'users'
      * @param name      login name
      * @param PW        correspond passWord
-     * @param ID
      * @return true if succeed and false o.w.
      */
-    public Boolean addUser(String name, String PW, int ID){
+    public Boolean addUser(String name, String PW){
         if(users.get(name)!=null) return false;
         users.put(name, new ClientInfo(name, PW));
         locks.put(name, new ReentrantReadWriteLock());
@@ -57,7 +56,7 @@ public class DataBase {
 
     public String logIn(int CHID, String name, String passCode) {
         String ans="";
-        if(users.get(name)==null) addUser(name,passCode,CHID);
+        if(users.get(name)==null) addUser(name,passCode);
         locks.get(name).writeLock().lock();
         try {
             if(activeUsersToCHID.get(CHID)!=null) {
@@ -89,7 +88,7 @@ public class DataBase {
 
     /**
      * removes client from 'active users map' and all his genre records
-     * @param connectionId
+     * @param connectionId      connection handler id
      */
     public void removeClient(int connectionId){
         String name = getName(connectionId);
@@ -110,10 +109,6 @@ public class DataBase {
         }
     }
 
-    // to remove ???????????????????????????????????????
-    public Map<Integer,String> getIdMap(){
-        return this.activeUsersToCHID;
-    }
     // return the name as represented at the 'activeUsersToCHID' map from given id
     public String getName(int id){
         return this.activeUsersToCHID.get(id);
@@ -137,10 +132,7 @@ public class DataBase {
     public Map<String,Integer> getGenreList(String genre){
         return this.GenreToUsers.get(genre);
     }
-    // to remove ???????????????????????????????????????
-    public ReentrantReadWriteLock getLock(String name){
-        return this.locks.get(name);
-    }
+
 
     /**
      * register the user (corresponded to the current connection handler ) to the given genre and id
@@ -164,9 +156,11 @@ public class DataBase {
         locks.get(name).writeLock().lock();
         try{
             this.GenreToUsers.forEach((gen,map)->{
-                if(map.get(id)!=null && map.get(id).equals(name))
-                    map.remove(id);
+                if(map.get(name)!=null && map.get(name).equals(id))
+                    map.remove(name);
+
             });
+
         }finally {
             locks.get(name).writeLock().unlock();
         }
@@ -177,7 +171,7 @@ public class DataBase {
      * extract the subscription id from the ' GenreToUsers' by the genre and userName
      * @param des              destination- a.k.a genre
      * @param connectionID     connection handler id
-     * @return
+     * @return  the description id
      */
     public int getSubId(String des, int connectionID) {
         String name = getName(connectionID);
