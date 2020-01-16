@@ -28,7 +28,7 @@ public class EncDecImp implements MessageEncoderDecoder<String> {
 
     @Override
     public byte[] encode(String message) {
-        return (message + "\u0000\n").getBytes(); //uses utf8 by default
+        return (message + "\n\u0000").getBytes(); //uses utf8 by default
     }
 
     private void pushByte(byte nextByte) {

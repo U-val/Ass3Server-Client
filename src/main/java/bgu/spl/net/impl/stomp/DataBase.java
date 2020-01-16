@@ -41,7 +41,8 @@ public class DataBase {
 
         try {
             if(activeUsersToCHID.get(CHID)!=null) {
-                if(activeUsersToCHID.get(CHID).equals(name)) ans="already logged in"; else ans="wrong user name";}
+                if(users.get(name).getConnected() || activeUsersToCHID.get(CHID).equals(name)) ans= "already logged in";
+                else ans="wrong user name";}
             else if(users.get(name).getPassWord().equals(passCode)){
                 users.get(name).connect();
                 activeUsersToCHID.put(CHID,name);
