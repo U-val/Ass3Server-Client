@@ -158,7 +158,6 @@ public class DataBase {
             this.GenreToUsers.forEach((gen,map)->{
                 if(map.get(name)!=null && map.get(name).equals(id))
                     map.remove(name);
-
             });
 
         }finally {
