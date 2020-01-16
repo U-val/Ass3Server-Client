@@ -7,18 +7,25 @@ import bgu.spl.net.srv.Server;
 public class StompServer {
 
     public static void main(String[] args) {
-//        new Thread(() -> Server.reactor(
-//                Runtime.getRuntime().availableProcessors(),
-//                7777, //port
-//                StompProtocol::new, //protocol factory
-//                EncDecImp::new //message encoder decoder factory
-//        ).serve()).start();
-        new Thread(() ->  Server.threadPerClient(
-                7777, //port
-                StompProtocol::new, //protocol factory
-                EncDecImp::new //message encoder decoder factory
-        ).serve()).start();
-
+        if(args.length != 2) {
+            System.out.println("invalid arguments! required - <port> <server type>");
+        }
+        int port = Integer.parseInt(args[0]);
+        if(args[1].equals("tpc")) {
+            Server.reactor(
+                    Runtime.getRuntime().availableProcessors(),
+                    port, //port
+                    StompProtocol::new, //protocol factory
+                    EncDecImp::new //message encoder decoder factory
+            ).serve();
+        }
+        else {
+            Server.threadPerClient(
+                    port, //port
+                    StompProtocol::new, //protocol factory
+                    EncDecImp::new //message encoder decoder factory
+            ).serve();
+        }
     }
 
 
