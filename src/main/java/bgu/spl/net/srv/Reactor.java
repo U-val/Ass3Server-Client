@@ -109,7 +109,7 @@ public class Reactor<String> implements Server<String> {
         //added
         int CHID;
         while (connections.addHandler(CHID=takeNumber(), handler));
-        handler.startProtocol(CHID, connections);
+        handler.startProtocol(CHID, (ConnectionsImpl<java.lang.String>) connections);
         clientChan.register(selector, SelectionKey.OP_READ, handler);
     }
 

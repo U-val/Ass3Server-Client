@@ -12,6 +12,7 @@ public class StompServer {
         }
         int port = Integer.parseInt(args[0]);
         if(args[1].equals("tpc")) {
+            System.out.println("TPC is turning on");
             Server.reactor(
                     Runtime.getRuntime().availableProcessors(),
                     port, //port
@@ -19,13 +20,15 @@ public class StompServer {
                     EncDecImp::new //message encoder decoder factory
             ).serve();
         }
-        else {
+        else if(args[1].equals("reactor")) {
+            System.out.println("reactor is turning on");
             Server.threadPerClient(
                     port, //port
                     StompProtocol::new, //protocol factory
                     EncDecImp::new //message encoder decoder factory
             ).serve();
         }
+        else System.out.println("no such server- try: reactor / tpc ");
     }
 
 
