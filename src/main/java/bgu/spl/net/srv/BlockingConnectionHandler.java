@@ -20,36 +20,29 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private volatile boolean connected = true;
-    private ConcurrentLinkedQueue<String> writeQ;
+
 
 
     public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<String> reader, StompMessagingProtocol protocol) {
         this.sock = sock;
         this.encdec = reader;
         this.protocol = protocol;
-        this.writeQ = new ConcurrentLinkedQueue<>();
+
     }
 
     @Override
     public void run() {
         try (Socket sock = this.sock) { //just for automatic closing
             int read;
-
             in = new BufferedInputStream(sock.getInputStream());
             out = new BufferedOutputStream(sock.getOutputStream());
 
-            read = in.read();
-            while (!protocol.shouldTerminate() && connected && (read >= 0) || !writeQ.isEmpty()) {
-                if(read >= 0){
+            while (!protocol.shouldTerminate() && connected &&  (read=in.read()) >= 0) {
+
                     String nextMessage = encdec.decodeNextByte((byte) read);
                     if (nextMessage != null)
                         protocol.process(nextMessage);
-                    read= in.read();
-                }
-                if(!writeQ.isEmpty()){
-                    out.write(encdec.encode(writeQ.poll()));
-                    out.flush();
-                }
+
             }
 
         } catch (IOException ex) {
@@ -65,8 +58,14 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     }
 
     @Override
-    public void send(T msg) {
-        writeQ.add((String) msg);
+    public synchronized void send(T msg) {
+
+        try{
+            out.write(encdec.encode((String) msg));
+            out.flush();
+        }catch (IOException ex) {
+            ex.printStackTrace();
+        }
 
     }
 

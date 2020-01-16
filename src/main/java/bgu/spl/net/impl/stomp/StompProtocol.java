@@ -19,13 +19,24 @@ public class StompProtocol implements StompMessagingProtocol {
     private String msgType;
     private int msgCount;
 
+    /**
+     * initiate the protocol with the connection handler id and the global connections singleton
+     * @param connectionId     connection handler id
+     * @param connections      global connections singleton
+     */
     public void start(int connectionId, Connections<String> connections){
         this.connectionID= connectionId;
         this.connections = (ConnectionsImpl<String>) connections;
         msgCount=0;
     }
-    //Main Process
+
+    /**
+     * first processing stage
+     * the main process function - direct  to the proper process function
+     * @param msg   the msg to process
+     */
     public void process(String msg) {
+        // msg setUp for the protocol fields
         currSize = msg.length();
         System.out.println("message at the protocol "+msg); //toRemove
         String[] splited = msg.split("\n", 2);
@@ -35,6 +46,7 @@ public class StompProtocol implements StompMessagingProtocol {
         body = temp[1]; //.split("^",1)[0];
         msgType=splited[0];
 
+        // start processing
         boolean shouldConnect = connections.getDataBase().getName(connectionID)==null || !connections.getDataBase().isLoggedIn(connectionID);
         if(shouldConnect && !splited[0].equals("CONNECT")) ErrorProcess("need to log In before any action");
         else
@@ -52,8 +64,8 @@ public class StompProtocol implements StompMessagingProtocol {
             default: ErrorProcess("unknown title - "+splited[0]);
         }
     }
-//********subProcess****************************
-
+//********subProcess - second processing stage ****************************
+    //handle unsubscribe
     private void unsubscribeProcess() {
         // headers check
         if(!checkHeaders(new String[]{"id"},true)) return;
@@ -62,12 +74,9 @@ public class StompProtocol implements StompMessagingProtocol {
 
         connections.getDataBase().unsubscribe(connectionID, ID);
         ReceiptProcess();
-
-
     }
 
-
-
+    //handle subscribe
     private void subscribeProcess() {
         //headers check
         if(!checkHeaders(new String[]{"destination","id"},true)) return;
@@ -79,8 +88,8 @@ public class StompProtocol implements StompMessagingProtocol {
         ReceiptProcess();
     }
 
+    //handle connect
     private void connectProcess() {
-
         //headers check
         if(!checkHeaders(new String[]{"accept-version","host","login","passcode"},true)) return;
 
@@ -96,6 +105,7 @@ public class StompProtocol implements StompMessagingProtocol {
             ErrorProcess(DataBaseRespond);
     }
 
+    //handle disconnect
     private void disconnectProcess() {
         // headers check
         if(!checkHeaders(new String[]{"receipt"},true)) return;
@@ -108,7 +118,7 @@ public class StompProtocol implements StompMessagingProtocol {
 
     }
 
-
+    //handle send
     private void sendProcess() {
         if(!checkHeaders(new String[]{"destination"},true)) return;
         if(body==null || body.equals("")) {ErrorProcess("missing body"); return;}
@@ -118,9 +128,12 @@ public class StompProtocol implements StompMessagingProtocol {
         MessageProcess(destination);
     }
 
+    //********subProcess - third processing stage ****************************
+
     private void MessageProcess( String des) {
         msgCount++;
-        int sub_id = connections.getDataBase().getSubId(des,connectionID);
+        int sub_id = connections.getDataBase().
+                getSubId(des,connectionID);
         connections.send(des, "MESSAGE\nsubscription-id:"+sub_id+
                 "\nmessage-id:"+msgCount+ "\ndestination:"+des+"\n"+body+"\n");
     }

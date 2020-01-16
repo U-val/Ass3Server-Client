@@ -143,15 +143,21 @@ public class DataBase {
     }
 
     /**
-     * add a user
-     * @param CHID
-     * @param genre
-     * @param id
+     * register the user (corresponded to the current connection handler ) to the given genre and id
+     * @param CHID      connection handler id
+     * @param genre     genre to register to
+     * @param id        subscription id for the current user
      */
     public void subscribe (int CHID, String genre, int id){
         this.GenreToUsers.computeIfAbsent(genre, k -> new ConcurrentHashMap<>()); // create new genre id needed
         this.GenreToUsers.get(genre).put(getName(CHID),id); // add user to this genre
     }
+
+    /**
+     * unregister the user (how correspond to the id) from the genre
+     * @param CHID     connection handler id
+     * @param id       subscription id for the current user
+     */
     public void unsubscribe (int CHID, int id) {
         String name = getName(CHID);
         if(name == null) return;
@@ -167,6 +173,12 @@ public class DataBase {
 
     }
 
+    /**
+     * extract the subscription id from the ' GenreToUsers' by the genre and userName
+     * @param des              destination- a.k.a genre
+     * @param connectionID     connection handler id
+     * @return
+     */
     public int getSubId(String des, int connectionID) {
         String name = getName(connectionID);
         if(name==null) return -1;
@@ -180,7 +192,4 @@ public class DataBase {
         return ans;
     }
 
-
-    // TODO subscribe / join
-    // TODO unsubscribe
 }
