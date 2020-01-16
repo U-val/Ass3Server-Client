@@ -15,7 +15,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
     private DataBase dataBase = new DataBase();
     private ReentrantReadWriteLock connectionLock = new ReentrantReadWriteLock();
 
-    private static class holder<String> {
+    private static class holder<T> {
         private static ConnectionsImpl instance = new ConnectionsImpl<>();
     }
     /**

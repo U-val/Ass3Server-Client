@@ -14,24 +14,24 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Supplier;
 
-public class Reactor<String> implements Server<String> {
+public class Reactor<T> implements Server<T> {
 
     private final int port;
     private final Supplier<StompMessagingProtocol> protocolFactory;
-    private final Supplier<MessageEncoderDecoder<String>> readerFactory;
+    private final Supplier<MessageEncoderDecoder<T>> readerFactory;
     private final ActorThreadPool pool;
     private Selector selector;
 
     private Thread selectorThread;
     private final ConcurrentLinkedQueue<Runnable> selectorTasks = new ConcurrentLinkedQueue<>();
-    private final ConnectionsImpl<String> connections = ConnectionsImpl.getInstance();
+    private final ConnectionsImpl<T> connections = ConnectionsImpl.getInstance();
     private int HandlerID=0;
 
     public Reactor(
             int numThreads,
             int port,
             Supplier<StompMessagingProtocol> protocolFactory,
-            Supplier<MessageEncoderDecoder<String>> readerFactory) {
+            Supplier<MessageEncoderDecoder<T>> readerFactory) {
 
         this.pool = new ActorThreadPool(numThreads);
         this.port = port;
@@ -101,7 +101,7 @@ public class Reactor<String> implements Server<String> {
     private void handleAccept(ServerSocketChannel serverChan, Selector selector) throws IOException {
         SocketChannel clientChan = serverChan.accept();
         clientChan.configureBlocking(false);
-        final NonBlockingConnectionHandler<String> handler = new NonBlockingConnectionHandler(
+        final NonBlockingConnectionHandler<T> handler = new NonBlockingConnectionHandler(
                 readerFactory.get(),
                 protocolFactory.get(),
                 clientChan,
@@ -109,7 +109,7 @@ public class Reactor<String> implements Server<String> {
         //added
         int CHID;
         while (connections.addHandler(CHID=takeNumber(), handler));
-        handler.startProtocol(CHID, (ConnectionsImpl<java.lang.String>) connections);
+        handler.startProtocol(CHID, (ConnectionsImpl<String>) connections);
         clientChan.register(selector, SelectionKey.OP_READ, handler);
     }
 
